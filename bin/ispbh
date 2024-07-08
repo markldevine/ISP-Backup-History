@@ -1,0 +1,93 @@
+#!/usr/bin/env raku
+
+use Data::Dump::Tree;
+
+use Our::Grid;
+use ISP::Servers;
+use ISP::dsmadmc;
+
+my $grid;
+my $window-hour             = 15;
+my $timezone                = now.DateTime.local.timezone;
+my $summary-retention;
+my $weekly-start;
+my $weekly-end;
+my $weekly-bytes;
+
+subset INTERVAL of Str where /^ DAILY | WEEKLY | MONTHLY $/;
+
+sub MAIN (
+    Str:D       :$isp-admin = 'A028441',            #= ISP admin name
+    INTERVAL    :$interval  = 'DAILY',              #= Reporting interval
+) {
+    $grid                   = Our::Grid.new;
+    $grid.title('ISP Daily Backup Size');
+    $grid.add-heading: 'ISP Server',    :bold,  :justification<left>;
+    $grid.add-heading: 'Start',         :bold,  :justification<left>;
+    $grid.add-heading: 'End',           :bold,  :justification<left>;
+    $grid.add-heading: 'Bytes',         :bold,  :justification<left>;
+
+    my ISP::dsmadmc $dsmadmc;
+    my @isp-servers;
+#   @isp-servers            = ISP::Servers.new(:$isp-admin).isp-servers.keys.sort;
+@isp-servers[0] = 'ISPLC01';
+    my $now                 = now.DateTime;
+    my $end-base            = DateTime.new(:year($now.year), :month($now.month), :day($now.day), :hour($window-hour), :0minute, :0second, :$timezone);
+    my $start-base          = DateTime.new($end-base - (24 * 60 * 60), :$timezone);
+    for @isp-servers -> $isp-server {
+        $dsmadmc           .= new(:$isp-server, :$isp-admin, :cache);
+        $summary-retention  = $dsmadmc.execute(['select', 'SUMMARYRETENTION', 'from', 'STATUS'], :expire-after(DateTime.new(now + (24 * 60 * 60))))[0]<SUMMARYRETENTION>.Int;
+$summary-retention = 31;
+        $grid.add-cell(:cell(Our::Grid::Cell.new(:text($isp-server),        :justification<left>,   :foreground<white>, :highlight(15, 79, 52), :background(15, 79, 52))),                          :0col);
+        loop (my $i = 0; $i < $summary-retention; $i++) {
+            my $start       = DateTime.new($start-base - ($i * (24 * 60 * 60)), :$timezone);
+            my $start-fmt   = $start.local.year ~ '-' ~ $start.local.month.fmt("%02d") ~ '-' ~ $start.local.day.fmt("%02d") ~ ' ' ~ $window-hour.fmt("%02d") ~ ':00:00';
+            my $end         = DateTime.new($end-base - ($i * (24 * 60 * 60)), :$timezone);
+            my $end-fmt     = $end.local.year ~ '-' ~ $end.local.month.fmt("%02d") ~ '-' ~ $end.local.day.fmt("%02d") ~ ' ' ~ $window-hour.fmt("%02d") ~ ':00:00';
+            my @cmd         =   [
+                                    'select',
+                                    'sum(BYTES)', 'as', 'BYTES',
+                                    'from',
+                                    'SUMMARY',
+                                    'where',
+                                    "ACTIVITY='BACKUP'",
+                                    'and',
+                                    'START_TIME',
+                                    '>=',
+                                    "'" ~ $start-fmt ~ "'",     # 2024-07-05 15:00:00'",
+                                    'and',
+                                    'START_TIME',
+                                    '<',
+                                    "'" ~ $end-fmt ~ "'",       # 2024-07-06 15:00:00'",
+                                ];
+            my $result      = $dsmadmc.execute(@cmd);
+            my $bytes       = $result[0]<BYTES>;
+#           if $interval eq 'WEEKLY' {
+#               unless $weekly-end {
+#                   $weekly-end     = $end;
+#                   $weekly-start   = $end - (7 * 24) * 60 * 60;
+#               }
+#               $weekly-bytes      += $bytes;
+#               if ($weekly-end - $end).round %% 7 == 0 {
+#                   $grid.add-cell
+#                   $grid.add-cell
+#                   $grid.add-cell
+#                   $grid.current-row++;
+#                   $weekly-start   = Nil;
+#                   $weekly-end     = Nil;
+#                   $weekly-bytes   = Nil;
+#               }
+#           }
+#           else {
+                $grid.add-cell(:cell(Our::Grid::Cell.new(:text($start-fmt), :justification<left>,   :foreground<white>, :highlight(15, 79, 52), :background(15, 79, 52))),                          :1col);
+                $grid.add-cell(:cell(Our::Grid::Cell.new(:text($end-fmt),   :justification<left>,   :foreground<white>, :highlight(15, 79, 52), :background(15, 79, 52))),                          :2col);
+                $grid.add-cell(:cell(Our::Grid::Cell.new(:text($bytes),     :justification<left>,   :foreground<white>, :highlight(15, 79, 52), :background(15, 79, 52), :bytes-to-bytes-unit)),    :3col);
+                $grid.current-row++;
+#           }
+        }
+    }
+    $grid.ANSI-print;
+#   $grid.CSV-print(:raw);
+}
+
+=finish
