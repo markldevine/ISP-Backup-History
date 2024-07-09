@@ -91,7 +91,7 @@ sub MAIN (
         }
     }
     $grid.ANSI-print;
-    $grid.CSV-print(:raw);
+#   $grid.CSV-print(:raw);
 }
 
 =finish
