@@ -62,17 +62,16 @@ $summary-retention = 31;
                                 ];
             my $result      = $dsmadmc.execute(@cmd);
             my $bytes       = $result[0]<BYTES>;
+put $start-fmt ~ "\t" ~ $end-fmt;
             if $interval eq 'WEEKLY' {
                 unless $weekly-end {
                     $weekly-end     = $end;
                     $weekly-start   = DateTime.new($end - (7 * 24 * 60 * 60), :$timezone);
                 }
+                $weekly-bytes   += $bytes;
                 if ($weekly-end - $end) %% 7 {
-                    if $weekly-end == $end {
-                        $weekly-bytes   += $bytes;
+                    unless $weekly-end == $end {
 put '$weekly-bytes = ' ~ $weekly-bytes;
-                    }
-                    else {
                         my $weekly-start-fmt    = $weekly-start.local.year ~ '-' ~ $weekly-start.local.month.fmt("%02d") ~ '-' ~ $weekly-start.local.day.fmt("%02d") ~ ' ' ~ $window-hour.fmt("%02d") ~ ':00:00';
                         my $weekly-end-fmt      = $weekly-end.local.year ~ '-' ~ $weekly-end.local.month.fmt("%02d") ~ '-' ~ $weekly-end.local.day.fmt("%02d") ~ ' ' ~ $window-hour.fmt("%02d") ~ ':00:00';
                         $grid.add-cell(:cell(Our::Grid::Cell.new(:text($weekly-start-fmt),  :justification<left>,   :foreground<white>, :highlight(15, 79, 52), :background(15, 79, 52))),                          :1col);
