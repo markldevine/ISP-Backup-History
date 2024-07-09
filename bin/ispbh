@@ -62,28 +62,35 @@ $summary-retention = 31;
                                 ];
             my $result      = $dsmadmc.execute(@cmd);
             my $bytes       = $result[0]<BYTES>;
-#           if $interval eq 'WEEKLY' {
-#               unless $weekly-end {
-#                   $weekly-end     = $end;
-#                   $weekly-start   = $end - (7 * 24) * 60 * 60;
-#               }
-#               $weekly-bytes      += $bytes;
-#               if ($weekly-end - $end).round %% 7 == 0 {
-#                   $grid.add-cell
-#                   $grid.add-cell
-#                   $grid.add-cell
-#                   $grid.current-row++;
-#                   $weekly-start   = Nil;
-#                   $weekly-end     = Nil;
-#                   $weekly-bytes   = Nil;
-#               }
-#           }
-#           else {
+            if $interval eq 'WEEKLY' {
+                unless $weekly-end {
+                    $weekly-end     = $end;
+                    $weekly-start   = DateTime.new($end - (7 * 24 * 60 * 60), :$timezone);
+                }
+                if ($weekly-end - $end) %% 7 {
+                    if $weekly-end == $end {
+                        $weekly-bytes   += $bytes;
+put '$weekly-bytes = ' ~ $weekly-bytes;
+                    }
+                    else {
+                        my $weekly-start-fmt    = $weekly-start.local.year ~ '-' ~ $weekly-start.local.month.fmt("%02d") ~ '-' ~ $weekly-start.local.day.fmt("%02d") ~ ' ' ~ $window-hour.fmt("%02d") ~ ':00:00';
+                        my $weekly-end-fmt      = $weekly-end.local.year ~ '-' ~ $weekly-end.local.month.fmt("%02d") ~ '-' ~ $weekly-end.local.day.fmt("%02d") ~ ' ' ~ $window-hour.fmt("%02d") ~ ':00:00';
+                        $grid.add-cell(:cell(Our::Grid::Cell.new(:text($weekly-start-fmt),  :justification<left>,   :foreground<white>, :highlight(15, 79, 52), :background(15, 79, 52))),                          :1col);
+                        $grid.add-cell(:cell(Our::Grid::Cell.new(:text($weekly-end-fmt),    :justification<left>,   :foreground<white>, :highlight(15, 79, 52), :background(15, 79, 52))),                          :2col);
+                        $grid.add-cell(:cell(Our::Grid::Cell.new(:text($weekly-bytes),      :justification<left>,   :foreground<white>, :highlight(15, 79, 52), :background(15, 79, 52), :bytes-to-bytes-unit)),    :3col);
+                        $grid.current-row++;
+                        $weekly-bytes   = Nil;
+                        $weekly-end     = $end;
+                        $weekly-start   = DateTime.new($end - (7 * 24 * 60 * 60), :$timezone);
+                    }
+                }
+            }
+            else {
                 $grid.add-cell(:cell(Our::Grid::Cell.new(:text($start-fmt), :justification<left>,   :foreground<white>, :highlight(15, 79, 52), :background(15, 79, 52))),                          :1col);
                 $grid.add-cell(:cell(Our::Grid::Cell.new(:text($end-fmt),   :justification<left>,   :foreground<white>, :highlight(15, 79, 52), :background(15, 79, 52))),                          :2col);
                 $grid.add-cell(:cell(Our::Grid::Cell.new(:text($bytes),     :justification<left>,   :foreground<white>, :highlight(15, 79, 52), :background(15, 79, 52), :bytes-to-bytes-unit)),    :3col);
                 $grid.current-row++;
-#           }
+            }
         }
     }
     $grid.ANSI-print;

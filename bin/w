@@ -1,6 +1,37 @@
 #!/usr/bin/env raku
 
-    my $now                 = now.DateTime;
-    my $end-base            = DateTime.new(:year($now.year), :month($now.month), :day($now.day), :hour($window-hour), :0minute, :0second, :$timezone);
-    my $start-base          = DateTime.new($end-base - (24 * 60 * 60), :$timezone);
+my $interval                    = 'WEEKLY';
+my $window-hour                 = 15;
+my $timezone                    = now.DateTime.local.timezone;
+my $summary-retention           = 366;
+my $now                         = now.DateTime;
+my $end-base                    = DateTime.new(:year($now.year), :month($now.month), :day($now.day), :hour($window-hour), :0minute, :0second, :$timezone);
+my $start-base                  = DateTime.new($end-base - (24 * 60 * 60), :$timezone);
 
+#put $start-base.local ~ '    ' ~ $end-base.local;
+
+my $weekly-start;
+my $weekly-end;
+
+loop (my $i = 0; $i < $summary-retention; $i++) {
+    my $start                   = DateTime.new($start-base - ($i * (24 * 60 * 60)), :$timezone);
+    my $end                     = DateTime.new($end-base - ($i * (24 * 60 * 60)), :$timezone);
+#put "\t" ~ $start ~ "\t" ~ $end;
+    if $interval eq 'WEEKLY' {
+        unless $weekly-end {
+            $weekly-end         = $end;
+            $weekly-start       = DateTime.new($end - (7 * 24 * 60 * 60), :$timezone);
+        }
+        if ($weekly-end - $end) %% 7 {
+            if $weekly-end == $end {
+put 'First one';
+put $weekly-start ~ "\t" ~ $weekly-end;
+            }
+            else {
+                $weekly-end     = $end;
+                $weekly-start   = DateTime.new($end - (7 * 24 * 60 * 60), :$timezone);
+put $weekly-start ~ "\t" ~ $weekly-end;
+            }
+        }
+    }
+}
