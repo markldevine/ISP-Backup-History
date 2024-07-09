@@ -33,6 +33,7 @@ sub MAIN (
 @isp-servers[0] = 'ISPLC01';
     my $now                 = now.DateTime;
     my $end-base            = DateTime.new(:year($now.year), :month($now.month), :day($now.day), :hour($window-hour), :0minute, :0second, :$timezone);
+    $end-base               = DateTime.new($end-base - (24 * 60 * 60)) if $now.hour < $window-hour;
     my $start-base          = DateTime.new($end-base - (24 * 60 * 60), :$timezone);
     for @isp-servers -> $isp-server {
         $dsmadmc           .= new(:$isp-server, :$isp-admin, :cache);
