@@ -29,8 +29,8 @@ sub MAIN (
 
     my ISP::dsmadmc $dsmadmc;
     my @isp-servers;
-#   @isp-servers            = ISP::Servers.new(:$isp-admin).isp-servers.keys.sort;
-@isp-servers[0] = 'ISPLC01';
+    @isp-servers            = ISP::Servers.new(:$isp-admin).isp-servers.keys.sort;
+#@isp-servers[0] = 'ISPLC01';
     my $now                 = now.DateTime;
     my $end-base            = DateTime.new(:year($now.year), :month($now.month), :day($now.day), :hour($window-hour), :0minute, :0second, :$timezone);
     $end-base               = DateTime.new($end-base - (24 * 60 * 60)) if $now.hour < $window-hour;
@@ -38,7 +38,7 @@ sub MAIN (
     for @isp-servers -> $isp-server {
         $dsmadmc           .= new(:$isp-server, :$isp-admin, :cache);
         $summary-retention  = $dsmadmc.execute(['select', 'SUMMARYRETENTION', 'from', 'STATUS'], :expire-after(DateTime.new(now + (24 * 60 * 60))))[0]<SUMMARYRETENTION>.Int;
-$summary-retention = 31;
+#$summary-retention = 31;
         $grid.add-cell(:cell(Our::Grid::Cell.new(:text($isp-server),        :justification<left>,   :foreground<white>, :highlight(15, 79, 52), :background(15, 79, 52))),                          :0col);
         loop (my $i = 0; $i < $summary-retention; $i++) {
             my $start       = DateTime.new($start-base - ($i * (24 * 60 * 60)), :$timezone);
@@ -64,22 +64,25 @@ $summary-retention = 31;
             my $result      = $dsmadmc.execute(@cmd);
             my $bytes       = $result[0]<BYTES>;
             if $interval eq 'WEEKLY' {
-put $start-fmt ~ "\t" ~ $end-fmt;
+#put $start-fmt ~ "\t" ~ $end-fmt ~ "\t" ~ $bytes;
                 unless $weekly-end {
                     $weekly-end     = $end;
                     $weekly-start   = DateTime.new($end - (7 * 24 * 60 * 60), :$timezone);
                 }
                 $weekly-bytes   += $bytes;
                 if ($weekly-end - $end) %% 7 {
-                    unless $weekly-end == $end {
-put '$weekly-bytes = ' ~ $weekly-bytes;
+                    if $weekly-end == $end {
+                    }
+                    else {
+                        $weekly-bytes          -= $bytes;
+#put '$weekly-bytes = ' ~ $weekly-bytes;
                         my $weekly-start-fmt    = $weekly-start.local.year ~ '-' ~ $weekly-start.local.month.fmt("%02d") ~ '-' ~ $weekly-start.local.day.fmt("%02d") ~ ' ' ~ $window-hour.fmt("%02d") ~ ':00:00';
                         my $weekly-end-fmt      = $weekly-end.local.year ~ '-' ~ $weekly-end.local.month.fmt("%02d") ~ '-' ~ $weekly-end.local.day.fmt("%02d") ~ ' ' ~ $window-hour.fmt("%02d") ~ ':00:00';
                         $grid.add-cell(:cell(Our::Grid::Cell.new(:text($weekly-start-fmt),  :justification<left>,   :foreground<white>, :highlight(15, 79, 52), :background(15, 79, 52))),                          :1col);
                         $grid.add-cell(:cell(Our::Grid::Cell.new(:text($weekly-end-fmt),    :justification<left>,   :foreground<white>, :highlight(15, 79, 52), :background(15, 79, 52))),                          :2col);
                         $grid.add-cell(:cell(Our::Grid::Cell.new(:text($weekly-bytes),      :justification<left>,   :foreground<white>, :highlight(15, 79, 52), :background(15, 79, 52), :bytes-to-bytes-unit)),    :3col);
                         $grid.current-row++;
-                        $weekly-bytes   = Nil;
+                        $weekly-bytes   = $bytes;
                         $weekly-end     = $end;
                         $weekly-start   = DateTime.new($end - (7 * 24 * 60 * 60), :$timezone);
                     }
