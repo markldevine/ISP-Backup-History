@@ -63,8 +63,8 @@ $summary-retention = 31;
                                 ];
             my $result      = $dsmadmc.execute(@cmd);
             my $bytes       = $result[0]<BYTES>;
-put $start-fmt ~ "\t" ~ $end-fmt;
             if $interval eq 'WEEKLY' {
+put $start-fmt ~ "\t" ~ $end-fmt;
                 unless $weekly-end {
                     $weekly-end     = $end;
                     $weekly-start   = DateTime.new($end - (7 * 24 * 60 * 60), :$timezone);
